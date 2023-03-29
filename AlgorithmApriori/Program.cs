@@ -7,11 +7,24 @@ namespace AlgorithmApriori
         public static void Main(string[] args)
         {
             // Работает хорошо)
-            var normalizedData = Utils.NormalizeData();
+            var table = new Table();
+            // Console.Write(table);
+            table.GenerateAssociativeRules();
 
-            // foreach (var key in normalizedData.Keys)
+            // var normalizedData = Utils.NormalizeDataReturnList();
+            // var normalizeTable = Utils.NormalizeDataReturnTable();
+            //
+            // var firstSet = new List<List<UserNameAndQuantity>>();
+            // foreach (var item in normalizedData)
             // {
-            //     var selectedString = normalizedData[key];
+            //     firstSet.Add(new List<UserNameAndQuantity> { item });
+            // }
+            //
+            // Utils.FindSets(normalizeTable, firstSet);
+            //
+            // foreach (var key in normalizeTable.Keys)
+            // {
+            //     var selectedString = normalizeTable[key];
             //     Console.Write($"User: {key} ");
             //     foreach (var item in selectedString)
             //     {
