@@ -7,22 +7,6 @@ namespace AlgorithmApriori
 {
     public class Table
     {
-        private struct UserNameAndQuantity
-        {
-            public string Name { get; set; }
-            public int Quantity { get; set; }
-
-            public override bool Equals(object obj)
-            {
-                if (obj is UserNameAndQuantity correctedObj)
-                {
-                    return correctedObj.Name == Name && correctedObj.Quantity == Quantity;
-                }
-
-                return false;
-            }
-        }
-        
         private readonly Dictionary<int, List<string>> _rawData = new Dictionary<int, List<string>>
         {
             { 1, new List<string> { "Капуста", "перец", "кукуруза" } },
@@ -44,8 +28,10 @@ namespace AlgorithmApriori
         private readonly Dictionary<int, List<string>> _namesInLowercase = new Dictionary<int, List<string>>();
         private readonly Dictionary<int, List<int>> _normalizedData = new Dictionary<int, List<int>>();
 
-        private List<string>
-            _uniqueNames; // Очень аккуратно нужно быть с этим списком. Ни в коем случае не менять последовательность имен. 
+        // Очень аккуратно нужно быть с этим списком. Ни в коем случае не менять последовательность имен.
+        private List<string> _uniqueNames;
+
+        private const int _minimumThreshold = 4;
 
         public Table()
         {
@@ -57,12 +43,12 @@ namespace AlgorithmApriori
             NormalizeData();
         }
 
-        
+
         /// <summary>
         /// Нормализуем данные и представляет таблицу в виде пользователей и продуктов и на пересечение пользователя
         /// и продукта ставим 0, если пользователь не приобретал продукт и 1 если приобретал
         /// </summary>
-        private Table NormalizeData()
+        private void NormalizeData()
         {
             var uniqueNames = GetUniqueNames();
 
@@ -84,10 +70,8 @@ namespace AlgorithmApriori
                     }
                 }
             }
-
-            return this;
         }
-        
+
         /// <summary>
         /// Генерируем ассоциативные правила
         /// </summary>
@@ -95,60 +79,22 @@ namespace AlgorithmApriori
         {
             // 0 итерация. получаем все стартовые комбинации
             var startCombinations = GetStartCombination();
-            
-            // 1 итерация. нужно расчитать сколько продуктов каждого типа всего
 
-            // 2 итерация. нужно перебрать все комбинации
+            // 1 итерация. нужно перебрать все комбинации
             var allCombinations = GetAllCombinations(startCombinations);
-            
-            
-            // 3 итерация. нужно понять какие данные оставить, а какие убрать (по сути повторяется итерация 1)
-            // todo сейчас не работает, когда у нас в комбинации всего один продукт, так как при одном продукте мы учитываем значение среди всех пользователей
-            var filteredStartCombinations = FilterOutCombinations(allCombinations);
-            
-            Console.WriteLine($"Filtered combinations: {filteredStartCombinations.Count}");
-            
-            foreach (var combination in filteredStartCombinations)
+
+            // 2 итерация. нужно опять перебрать все комбинации
+            allCombinations = GetAllCombinations(allCombinations);
+
+            foreach (var combination in allCombinations)
             {
-                Console.WriteLine($"ElementOne: {combination[0]}; ElementTwo: {combination[1]}");
+                Console.WriteLine(
+                    $"ElementOne: {combination[0]}; ElementTwo: {combination[1]}; ElementTwo: {combination[2]}; Count: {combination.Count}"); //ElementTwo: {combination[1]}; ElementThee: {combination[2]}
             }
 
             return this;
         }
 
-        /// <summary>
-        /// Фильтруем все комбинации, те которые не подоходят очищаем
-        /// </summary>
-        private IReadOnlyList<IReadOnlyList<string>> FilterOutCombinations(IReadOnlyList<IReadOnlyList<string>> allCombinations)
-        {
-            var resultCombinations = new List<IReadOnlyList<string>>();
-
-            foreach (var combinations in allCombinations)
-            {
-                var sumCorrectedCombinations = 0;
-                foreach (var user in _normalizedData.Keys)
-                {
-                    var numberOfData = combinations.Sum(info => GetNumberOfDataFromUser(user, info));
-                    if (numberOfData / combinations.Count == 1)
-                    {
-                        sumCorrectedCombinations++;
-                    }
-                }
-                
-                if (sumCorrectedCombinations >= 4)  // todo вынести 4 в константы
-                {
-                    resultCombinations.Add(combinations);
-                }
-            }
-            
-            return resultCombinations;
-        }
-
-        // private int GetNumberOfDataFromUser(int user, List<string> nameInfo)
-        // {
-        //     return nameInfo.Sum(info => GetNumberOfDataFromUser(user, info));
-        // }
-        
         /// <summary>
         /// Получаем кол-во данных, которые хранятся у выбранного пользователя под заданным именим
         /// </summary>
@@ -168,43 +114,20 @@ namespace AlgorithmApriori
                     return _normalizedData[user][i];
                 }
             }
-            
+
             Console.WriteLine($"Error. There is no product with this name ({nameInfo}) in the user table");
             return 0;
         }
 
-        
-        
-        private IReadOnlyList<int> GetStringDataByName(string name)
+        private IReadOnlyList<List<string>> GetAllCombinations(IReadOnlyList<IReadOnlyList<string>> startCombination)
         {
-            var uniqueNames = GetUniqueNames();
-            if (!uniqueNames.Contains(name))
-            {
-                return new List<int>();
-            }
-
-            for (int i = 0; i < uniqueNames.Count; i++)
-            {
-                if (name == uniqueNames[i])
-                {
-                    return _normalizedData[i];
-                }
-            }
-
-            return new List<int>();
-        }
-
-        private IReadOnlyList<IReadOnlyList<string>> GetAllCombinations(List<List<string>> startCombination)
-        {
-            // todo нужно избавиться от дубликатов, когда у нас есть одинаковые перестановки.
-            // если у нас есть (a, b) и (b, a), то нужно оставить только одну из двух версий, но не обе
-            var resultCombination = new List<List<string>>();
+            var resultCombinations = new List<List<string>>();
             if (startCombination == null || startCombination.Count == 0)
             {
-                return resultCombination;
+                return resultCombinations;
             }
-            
-            
+
+
             for (var i = 0; i < startCombination.Count; i++)
             {
                 for (var j = 0; j < startCombination.Count; j++)
@@ -213,18 +136,30 @@ namespace AlgorithmApriori
                     {
                         continue;
                     }
-                    
+
                     var firstRow = startCombination[i];
                     var secondRow = startCombination[j];
-                    var canCombine = TryToCombinationUsingK(firstRow, secondRow, out var resultCombine);
+                    var canCombine = TryToCombinationUsingK(firstRow, secondRow, out var resultCombination);
+
+                    // todo костыль)
+                    if (resultCombination.Count == 2 && canCombine)
+                    {
+                        if (resultCombinations.Any(element =>
+                                element[0] == resultCombination[1] && element[1] == resultCombination[0]))
+                        {
+                            continue;
+                        }
+                    }
+
+
                     if (canCombine)
                     {
-                        resultCombination.Add(resultCombine);
+                        resultCombinations.Add(resultCombination);
                     }
                 }
             }
-            
-            return resultCombination;
+
+            return resultCombinations;
         }
 
         private List<List<string>> GetStartCombination()
@@ -235,7 +170,8 @@ namespace AlgorithmApriori
         /// <summary>
         /// Пытаемся комбинировать значения
         /// </summary>
-        private bool TryToCombinationUsingK(List<string> elementsOne, List<string> elementsTwo, out List<string> result)
+        private bool TryToCombinationUsingK(IReadOnlyList<string> elementsOne, IReadOnlyList<string> elementsTwo,
+            out List<string> result)
         {
             if (elementsOne.Count != elementsTwo.Count)
             {
@@ -243,6 +179,7 @@ namespace AlgorithmApriori
                 result = new List<string>();
                 return false;
             }
+
             var k = elementsOne.Count - 1;
             if (k < 0)
             {
@@ -254,7 +191,7 @@ namespace AlgorithmApriori
             if (k == 0)
             {
                 result = new List<string> { elementsOne[0], elementsTwo[0] };
-                return true;
+                return CheckPassabilityOfMinimumThreshold(result);
             }
 
             result = new List<string>();
@@ -272,10 +209,26 @@ namespace AlgorithmApriori
                 }
                 else
                 {
-                    result.AddRange(new string[] {elementsOne[i], elementsTwo[i]});
+                    result.AddRange(new[] { elementsOne[i], elementsTwo[i] });
                 }
             }
-            return true;
+
+            return CheckPassabilityOfMinimumThreshold(elementsOne) && CheckPassabilityOfMinimumThreshold(elementsTwo);
+        }
+
+        private bool CheckPassabilityOfMinimumThreshold(IReadOnlyList<string> elements)
+        {
+            var numberOfMatches = 0;
+            foreach (var user in _normalizedData.Keys)
+            {
+                var numberOfData = elements.Sum(info => GetNumberOfDataFromUser(user, info));
+                if (numberOfData / elements.Count == 1)
+                {
+                    numberOfMatches++;
+                }
+            }
+
+            return numberOfMatches >= _minimumThreshold;
         }
 
         private IReadOnlyList<string> GetUniqueNames()
@@ -293,27 +246,6 @@ namespace AlgorithmApriori
             }
 
             return _uniqueNames.ToArray();
-        }
-
-        private List<UserNameAndQuantity> GetAmountOfDataFromUser()
-        {
-            var result = new List<UserNameAndQuantity>();
-            var uniqueNames = GetUniqueNames();
-            foreach (var userData in _normalizedData.Keys.Select(user => _normalizedData[user]))
-            {
-                for (var i = 0; i < uniqueNames.Count; i++)
-                {
-                    var name = uniqueNames[i];
-                    var quantity = userData[i];
-                    result.Add(new UserNameAndQuantity()
-                    {
-                        Name = name,
-                        Quantity = quantity
-                    });
-                }
-            }
-
-            return result;
         }
 
         public override string ToString()
